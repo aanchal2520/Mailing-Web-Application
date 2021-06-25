@@ -12,7 +12,8 @@ router.post('/login', [
 
 //register api
 router.post('/register', [
-    check('name').exists().withMessage('Name required'),
+    check('first').exists().withMessage('First Name required'),
+    check('last').exists().withMessage('last Name required'),
     check('email').exists().withMessage('Email required'),
     check('password').exists().withMessage('Password required')
 ], register)
