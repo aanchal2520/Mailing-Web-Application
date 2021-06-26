@@ -15,7 +15,8 @@ router.post('/register', [
     check('first').exists().withMessage('First Name required'),
     check('last').exists().withMessage('last Name required'),
     check('email').exists().withMessage('Email required'),
-    check('password').exists().withMessage('Password required')
+    check('password').exists().withMessage('Password required'),
+    check('confirmPassword').exists().withMessage('Re-entered password required')
 ], register)
 
 module.exports = router;

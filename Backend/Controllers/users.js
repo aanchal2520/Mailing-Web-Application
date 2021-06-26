@@ -17,8 +17,8 @@ exports.register = async (req, res) => {
         return res.status(400).json(errors);
     }
 
-    const {first, last, email, password } = req.body;
-    const encryptedPass = await bcrypt.hash(password, 10);
+    const {first, last, email, password, confirmPassword } = req.body;
+    //const encryptedPass = await bcrypt.hash(password, 10);
 
     // if(password.length < 5) {
     //     return res.json({
@@ -27,54 +27,109 @@ exports.register = async (req, res) => {
     //     })
     // }
     try {
-        // const response = await User.create({
-        //     name,
-        //     email,
-        //     encryptedPass
-        // })
-        const doc = new User({
-          name:{
+
+        const existingUser = await User.findOne({ email });
+
+        if(existingUser) 
+          return res.status(400).json({ message: 'User already exists' });
+
+        if(password !== confirmPassword)
+          return res.status(400).json({ message : 'Passwords do not match' });
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        const result = await User.create({ 
+          name: {
             first: first,
             last: last
-          },
+          }, 
           email: email,
-          password: encryptedPass });
-        await doc.save();
+          password: hashedPassword
+         })
+
+        const token = jwt.sign(
+          { id: user._id , 
+            email: user.email
+          },
+          JWT_SECRET
+        )
+
+        return res.status(200).json({ result, token });
+        // const doc = new User({
+        //   name:{
+        //     first: first,
+        //     last: last
+        //   },
+        //   email: email,
+        //   password: encryptedPass });
+        // await doc.save();
         
-        console.log('User created successfully', doc);
+        // console.log('User created successfully', doc);
         
     } catch (error) {
-        if(error.code === 11000)
-            return res.json({ status : 'error', error: 'email already exists' });
-        throw error
+        return res.status(500).json({ message: 'Something went wrong' });
     }
 
-  res.json({status: 'ok'});
+  //res.json({status: 'ok'});
 
 }
 
 //login api
+// exports.login = async (req, res) => {
+//   const {email , password } = req.body;
+//   const user = await User.findOne({email}).lean();
+
+//   if(!user){
+//     return res.json({ status: 'error', error: 'Invalid email/password'});
+//   }
+
+//   if(await bcrypt.compare(password, user.password)){
+
+//     const token = jwt.sign(
+//       { id: user._id , 
+//         email: user.email
+//       },
+//       JWT_SECRET
+//     )
+
+//     return res.json({status: 'ok', data: token });
+//   }
+
+//   res.json({ status:'error' , error: 'Invalid email/password'});
+
+// }
+
 exports.login = async (req, res) => {
-  const {email , password } = req.body;
-  const user = await User.findOne({email}).lean();
+    const errors = validationResult(req);
+    console.log(errors.length);
 
-  if(!user){
-    return res.json({ status: 'error', error: 'Invalid email/password'});
-  }
+    if(!errors.isEmpty()) {
+        return res.status(400).json(errors);
+    }
 
-  if(await bcrypt.compare(password, user.password)){
+    const { email, password } = req.body;
 
-    const token = jwt.sign(
-      { id: user._id , 
+    try {
+      const existingUser = await User.findOne({ email });
+      if(!existingUser) 
+        return res.staus(400).json({ message: 'User does not exist' });
+      
+      const isPasswordCorrect = await bcrypt.compare(password, existingUser.password);
+      if(!isPasswordCorrect) 
+        return res.status(400).json({ message: 'Invalid credentials' });
+      
+      const token = jwt.sign(
+      { 
+        id: user._id , 
         email: user.email
       },
-      JWT_SECRET
-    )
+        JWT_SECRET
+      )
 
-    return res.json({status: 'ok', data: token });
-  }
-
-  res.json({ status:'error' , error: 'Invalid email/password'});
-
+      return res.status(200).json({ result: existingUser, token: token });
+      
+    } catch (error) {
+      return res.status(500).json({ message: 'Something went wrong' });
+    }
 }
 
